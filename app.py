@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # Configuración de la página con el título de JOMACO
-st.set_page_config(page_title="Registro de citaciones JOMACO", page_icon="📝", layout="wide") # Cambiado a 'wide' para usar mejor el espacio
+st.set_page_config(page_title="Registro de citaciones JOMACO", page_icon="📝", layout="wide")
 st.title("📝 Registro de citaciones JOMACO")
 
 LISTA_OFICIAL_CSV = "estudiantes.csv"
@@ -17,20 +17,18 @@ def cargar_estudiantes():
 
 df_estudiantes = cargar_estudiantes()
 
-# Inicializar variables en la sesión
 if 'lista_estudiantes' not in st.session_state:
     st.session_state.lista_estudiantes = []
 if 'contador_limpieza' not in st.session_state:
     st.session_state.contador_limpieza = 0
 
-# --- DISEÑO EN DOS GRANDES COLUMNAS PARA QUE NADA SE OCULTE ---
-col_formulario, col_revision = st.columns([1.2, 1]) # Izquierda para llenar, Derecha para ver lo guardado
+# --- DISEÑO EN DOS GRANDES COLUMNAS ---
+col_formulario, col_revision = st.columns([1.2, 1])
 
 with col_formulario:
     st.subheader("1. Llenar Datos de Citación")
     
-    # Reducimos drásticamente el tamaño del campo Grupo usando columnas
-    col_g1, col_g2 = st.columns([1, 2]) # El grupo toma un espacio pequeño, el resto queda libre
+    col_g1, col_g2 = st.columns([1, 2])
     with col_g1:
         if df_estudiantes is not None:
             lista_grupos = sorted(df_estudiantes['Grupo'].unique().astype(str))
@@ -39,10 +37,7 @@ with col_formulario:
             st.error("⚠️ No se encontró 'estudiantes.csv'")
             grupo = st.text_input("Grupo:")
             
-    # Formulario para contener el resto de datos de forma compacta
     with st.form("formulario_citacion", clear_on_submit=False):
-        
-        # Docente y Asignatura en la misma fila
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             nombre_docente = st.text_input("Nombre del Docente:", key="txt_docente")
@@ -52,7 +47,6 @@ with col_formulario:
         motivo = st.selectbox("Motivo principal:", ["Bajo Rendimiento Académico", "Comportamiento / Disciplinario", "Académico y Disciplinario"])
 
         st.markdown("**2. Selección de Alumnos**")
-        # Mostrar el multiselect dinámico según el grupo seleccionado arriba
         if df_estudiantes is not None and grupo != "--":
             estudiantes_filtrados = df_estudiantes[df_estudiantes['Grupo'].astype(str) == grupo]['Nombre'].tolist()
             estudiantes_seleccionados = st.multiselect(
@@ -64,7 +58,6 @@ with col_formulario:
             st.info("💡 Seleccione un grupo arriba para activar este listado.")
             estudiantes_seleccionados = []
 
-        # Botón para agregar
         boton_agregar = st.form_submit_button("➕ Agregar a la Lista Inferior", use_container_width=True)
 
         if boton_agregar:
@@ -85,16 +78,14 @@ with col_formulario:
             else:
                 st.error("Por favor, rellene todos los campos del formulario.")
 
-# --- COLUMNA DERECHA: REVISIÓN TOTALMENTE VISIBLE ---
+# --- COLUMNA DERECHA: REVISIÓN Y DESCARGA ---
 with col_revision:
     st.subheader("2. Estudiantes en Espera")
     
     if st.session_state.lista_estudiantes:
-        # Se muestra la tabla de los que van a ser guardados
         df_temporal = pd.DataFrame(st.session_state.lista_estudiantes)
         st.dataframe(df_temporal[["Grupo", "Estudiante", "Motivo"]], use_container_width=True, hide_index=True)
         
-        # Botones de control limpios y siempre visibles a la derecha
         c_b1, c_b2 = st.columns(2)
         with c_b1:
             if st.button("🗑️ Limpiar Todo", use_container_width=True):
@@ -117,3 +108,19 @@ with col_revision:
             st.rerun()
     else:
         st.info("No hay estudiantes pendientes por guardar en este bloque.")
+
+    # --- NUEVA ZONA DE DESCARGA SEGURA (Se ve abajo a la derecha) ---
+    if os.path.exists(ARCHIVO_SALIDA_EXCEL):
+        st.markdown("---")
+        st.markdown("### 📥 Zona de Administración (Descargas)")
+        try:
+            with open(ARCHIVO_SALIDA_EXCEL, "rb") as f:
+                st.download_button(
+                    label="📊 Descargar Archivo Excel Consolidado",
+                    data=f,
+                    file_name="citaciones_JOMACO_consolidado.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+        except Exception as e:
+            st.warning("El archivo se está actualizando, espere un momento.")
